@@ -19,8 +19,6 @@ export default function GerenciarProdutos() {
     const [modalOpen, setModalOpen] = useState(false);
     const [modoEdicao, setModoEdicao] = useState(false);
     const [produtoSelecionado, setProdutoSelecionado] = useState(null);
-
-    // ====== NOVO ESTADO: IMAGE PREVIEW ======
     const [imagePreview, setImagePreview] = useState('');
 
     const [formData, setFormData] = useState({
@@ -68,7 +66,6 @@ export default function GerenciarProdutos() {
             googleDriveFileId: '',
             categoriaId: '',
         });
-        // ====== LIMPAR PREVIEW ======
         setImagePreview('');
         setModalOpen(true);
     };
@@ -88,7 +85,6 @@ export default function GerenciarProdutos() {
                 googleDriveFileId: produto.googleDriveFileId || '',
                 categoriaId: produto.categoria?.id?.toString() || '',
             });
-            // ====== SETAR PREVIEW COM IMAGEM EXISTENTE ======
             setImagePreview(produto.imagemUrl || '');
             setModalOpen(true);
         } catch (error) {
@@ -97,12 +93,10 @@ export default function GerenciarProdutos() {
         }
     };
 
-    // ====== ATUALIZAR HANDLE INPUT CHANGE PARA PREVIEW ======
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
 
-        // Se for o campo de URL da imagem, atualizar preview
         if (name === 'imagemUrl') {
             setImagePreview(value);
         }
@@ -140,6 +134,29 @@ export default function GerenciarProdutos() {
         } catch (error) {
             console.error('Erro ao salvar produto:', error);
             toast.error('Erro ao salvar produto!', { id: loadingToast });
+        }
+    };
+
+    // ====== NOVA FUNÇÃO: ALTERAR CATEGORIA ======
+    const alterarCategoria = async (produtoId, novaCategoriaId) => {
+        const produto = produtos.find((p) => p.id === produtoId);
+        if (!produto) return;
+
+        const loadingToast = toast.loading('Atualizando categoria...');
+
+        try {
+            const produtoAtualizado = {
+                ...produto,
+                categoria: {
+                    id: parseInt(novaCategoriaId),
+                },
+            };
+            await produtosApi.atualizar(produtoId, produtoAtualizado);
+            toast.success('Categoria atualizada com sucesso!', { id: loadingToast });
+            carregarDados();
+        } catch (error) {
+            console.error('Erro ao atualizar categoria:', error);
+            toast.error('Erro ao atualizar categoria!', { id: loadingToast });
         }
     };
 
@@ -214,8 +231,20 @@ export default function GerenciarProdutos() {
                                         <td className="px-3 py-4 text-center">
                                             <Download className="w-5 h-5 mx-auto text-gray-600 cursor-pointer hover:text-helou-green" />
                                         </td>
-                                        <td className="px-3 py-4 text-sm text-gray-800">
-                                            {produto.categoria?.nome || 'Sem categoria'}
+                                        {/* ====== SELECT DE CATEGORIA NA TABELA ====== */}
+                                        <td className="px-3 py-4">
+                                            <select
+                                                value={produto.categoria?.id || ''}
+                                                onChange={(e) => alterarCategoria(produto.id, e.target.value)}
+                                                className="px-3 py-1.5 rounded border text-sm font-medium cursor-pointer bg-white border-gray-400 text-gray-700 min-w-[150px]"
+                                            >
+                                                <option value="">Sem categoria</option>
+                                                {categorias.map((cat) => (
+                                                    <option key={cat.id} value={cat.id}>
+                                                        {cat.nome}
+                                                    </option>
+                                                ))}
+                                            </select>
                                         </td>
                                         <td className="px-3 py-4 text-sm text-gray-800">
                                             {produto.status}
@@ -326,7 +355,6 @@ export default function GerenciarProdutos() {
                                     value={formData.imagemUrl}
                                     onChange={handleInputChange}
                                 />
-                                {/* ====== PREVIEW DA IMAGEM ====== */}
                                 {imagePreview && (
                                     <div className="mt-3 text-center">
                                         <img
