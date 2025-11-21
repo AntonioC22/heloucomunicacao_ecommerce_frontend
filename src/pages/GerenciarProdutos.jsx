@@ -17,8 +17,6 @@ export default function GerenciarProdutos() {
     const [categorias, setCategorias] = useState([]);
     const [loading, setLoading] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
-
-    // ====== NOVOS ESTADOS DO MODAL ======
     const [modoEdicao, setModoEdicao] = useState(false);
     const [produtoSelecionado, setProdutoSelecionado] = useState(null);
 
@@ -55,7 +53,6 @@ export default function GerenciarProdutos() {
         }
     };
 
-    // ====== NOVA FUNÇÃO: ABRIR MODAL PARA ADICIONAR ======
     const abrirModalAdicionar = () => {
         setModoEdicao(false);
         setProdutoSelecionado(null);
@@ -71,18 +68,68 @@ export default function GerenciarProdutos() {
         setModalOpen(true);
     };
 
-    // ====== NOVA FUNÇÃO: HANDLE INPUT CHANGE ======
+    // ====== NOVA FUNÇÃO: ABRIR MODAL PARA EDITAR ======
+    const abrirModalEditar = async (id) => {
+        try {
+            const response = await produtosApi.buscarPorId(id);
+            const produto = response.data;
+            setModoEdicao(true);
+            setProdutoSelecionado(produto);
+            setFormData({
+                nome: produto.nome,
+                descricao: produto.descricao || '',
+                preco: produto.preco,
+                linkDownload: produto.linkDownload || '',
+                imagemUrl: produto.imagemUrl || '',
+                googleDriveFileId: produto.googleDriveFileId || '',
+                categoriaId: produto.categoria?.id?.toString() || '',
+            });
+            setModalOpen(true);
+        } catch (error) {
+            console.error('Erro ao buscar produto:', error);
+            toast.error('Erro ao carregar produto!');
+        }
+    };
+
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
-    // ====== FUNÇÃO HANDLESUBMIT (SÓ COM CONSOLE.LOG POR ENQUANTO) ======
-    const handleSubmit = (e) => {
+    // ====== FUNÇÃO HANDLESUBMIT IMPLEMENTADA ======
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log('Dados do formulário:', formData);
-        console.log('Modo edição:', modoEdicao);
-        // TODO: Implementar integração com API
+
+        const produtoData = {
+            nome: formData.nome,
+            descricao: formData.descricao,
+            preco: parseFloat(formData.preco),
+            linkDownload: formData.linkDownload,
+            imagemUrl: formData.imagemUrl || null,
+            googleDriveFileId: formData.googleDriveFileId || null,
+            categoria: {
+                id: parseInt(formData.categoriaId),
+            },
+        };
+
+        const loadingToast = toast.loading(
+            modoEdicao ? 'Atualizando produto...' : 'Criando produto...'
+        );
+
+        try {
+            if (modoEdicao && produtoSelecionado) {
+                await produtosApi.atualizar(produtoSelecionado.id, produtoData);
+                toast.success('Produto atualizado com sucesso!', { id: loadingToast });
+            } else {
+                await produtosApi.criar(produtoData);
+                toast.success('Produto criado com sucesso!', { id: loadingToast });
+            }
+            setModalOpen(false);
+            carregarDados();
+        } catch (error) {
+            console.error('Erro ao salvar produto:', error);
+            toast.error('Erro ao salvar produto!', { id: loadingToast });
+        }
     };
 
     return (
@@ -136,6 +183,10 @@ export default function GerenciarProdutos() {
                                     <th className="text-left px-3 py-3 text-sm font-semibold text-gray-700">
                                         Status
                                     </th>
+                                    {/* ====== NOVA COLUNA: EDITAR ====== */}
+                                    <th className="text-center px-3 py-3 text-sm font-semibold text-gray-700">
+                                        Editar
+                                    </th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -156,8 +207,17 @@ export default function GerenciarProdutos() {
                                         <td className="px-3 py-4 text-sm text-gray-800">
                                             {produto.categoria?.nome || 'Sem categoria'}
                                         </td>
-                                        <td className="px-3 py-4 text-sm text-gray-800 rounded-r-lg">
+                                        <td className="px-3 py-4 text-sm text-gray-800">
                                             {produto.status}
+                                        </td>
+                                        {/* ====== BOTÃO DE EDITAR ====== */}
+                                        <td className="px-3 py-4 text-center rounded-r-lg">
+                                            <button
+                                                onClick={() => abrirModalEditar(produto.id)}
+                                                className="text-lg cursor-pointer hover:scale-110 transition-transform"
+                                            >
+                                                ✏️
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}
@@ -168,7 +228,6 @@ export default function GerenciarProdutos() {
                 </div>
             </main>
 
-            {/* ====== MODAL (NOVO!) ====== */}
             {modalOpen && (
                 <div
                     className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
@@ -191,7 +250,6 @@ export default function GerenciarProdutos() {
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-5">
-                            {/* Nome */}
                             <div>
                                 <Label htmlFor="nome">Nome do Produto *</Label>
                                 <Input
@@ -203,7 +261,6 @@ export default function GerenciarProdutos() {
                                 />
                             </div>
 
-                            {/* Categoria */}
                             <div>
                                 <Label htmlFor="categoriaId">Categoria *</Label>
                                 <Select
@@ -226,7 +283,6 @@ export default function GerenciarProdutos() {
                                 </Select>
                             </div>
 
-                            {/* Descrição */}
                             <div>
                                 <Label htmlFor="descricao">Descrição</Label>
                                 <textarea
@@ -239,7 +295,6 @@ export default function GerenciarProdutos() {
                                 />
                             </div>
 
-                            {/* Preço */}
                             <div>
                                 <Label htmlFor="preco">Preço (R$) *</Label>
                                 <Input
@@ -253,7 +308,6 @@ export default function GerenciarProdutos() {
                                 />
                             </div>
 
-                            {/* URL da Imagem */}
                             <div>
                                 <Label htmlFor="imagemUrl">URL da Imagem</Label>
                                 <Input
@@ -265,7 +319,6 @@ export default function GerenciarProdutos() {
                                 />
                             </div>
 
-                            {/* Google Drive File ID */}
                             <div>
                                 <Label htmlFor="googleDriveFileId">Google Drive File ID *</Label>
                                 <Input
@@ -277,7 +330,6 @@ export default function GerenciarProdutos() {
                                 />
                             </div>
 
-                            {/* Link de Download */}
                             <div>
                                 <Label htmlFor="linkDownload">Link de Download</Label>
                                 <Input
@@ -289,7 +341,6 @@ export default function GerenciarProdutos() {
                                 />
                             </div>
 
-                            {/* Botões */}
                             <div className="flex gap-3 justify-end pt-4">
                                 <button
                                     type="button"
