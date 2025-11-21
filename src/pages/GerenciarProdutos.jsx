@@ -20,6 +20,9 @@ export default function GerenciarProdutos() {
     const [modoEdicao, setModoEdicao] = useState(false);
     const [produtoSelecionado, setProdutoSelecionado] = useState(null);
 
+    // ====== NOVO ESTADO: IMAGE PREVIEW ======
+    const [imagePreview, setImagePreview] = useState('');
+
     const [formData, setFormData] = useState({
         nome: '',
         descricao: '',
@@ -65,10 +68,11 @@ export default function GerenciarProdutos() {
             googleDriveFileId: '',
             categoriaId: '',
         });
+        // ====== LIMPAR PREVIEW ======
+        setImagePreview('');
         setModalOpen(true);
     };
 
-    // ====== NOVA FUNÇÃO: ABRIR MODAL PARA EDITAR ======
     const abrirModalEditar = async (id) => {
         try {
             const response = await produtosApi.buscarPorId(id);
@@ -84,6 +88,8 @@ export default function GerenciarProdutos() {
                 googleDriveFileId: produto.googleDriveFileId || '',
                 categoriaId: produto.categoria?.id?.toString() || '',
             });
+            // ====== SETAR PREVIEW COM IMAGEM EXISTENTE ======
+            setImagePreview(produto.imagemUrl || '');
             setModalOpen(true);
         } catch (error) {
             console.error('Erro ao buscar produto:', error);
@@ -91,12 +97,17 @@ export default function GerenciarProdutos() {
         }
     };
 
+    // ====== ATUALIZAR HANDLE INPUT CHANGE PARA PREVIEW ======
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
+
+        // Se for o campo de URL da imagem, atualizar preview
+        if (name === 'imagemUrl') {
+            setImagePreview(value);
+        }
     };
 
-    // ====== FUNÇÃO HANDLESUBMIT IMPLEMENTADA ======
     const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -183,7 +194,6 @@ export default function GerenciarProdutos() {
                                     <th className="text-left px-3 py-3 text-sm font-semibold text-gray-700">
                                         Status
                                     </th>
-                                    {/* ====== NOVA COLUNA: EDITAR ====== */}
                                     <th className="text-center px-3 py-3 text-sm font-semibold text-gray-700">
                                         Editar
                                     </th>
@@ -210,7 +220,6 @@ export default function GerenciarProdutos() {
                                         <td className="px-3 py-4 text-sm text-gray-800">
                                             {produto.status}
                                         </td>
-                                        {/* ====== BOTÃO DE EDITAR ====== */}
                                         <td className="px-3 py-4 text-center rounded-r-lg">
                                             <button
                                                 onClick={() => abrirModalEditar(produto.id)}
@@ -317,6 +326,17 @@ export default function GerenciarProdutos() {
                                     value={formData.imagemUrl}
                                     onChange={handleInputChange}
                                 />
+                                {/* ====== PREVIEW DA IMAGEM ====== */}
+                                {imagePreview && (
+                                    <div className="mt-3 text-center">
+                                        <img
+                                            src={imagePreview}
+                                            alt="Preview"
+                                            className="max-w-full max-h-48 rounded border border-gray-300 mx-auto"
+                                            onError={() => toast.error('Erro ao carregar imagem!')}
+                                        />
+                                    </div>
+                                )}
                             </div>
 
                             <div>
