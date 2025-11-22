@@ -14,12 +14,16 @@ import toast, { Toaster } from 'react-hot-toast';
 
 export default function GerenciarProdutos() {
     const [produtos, setProdutos] = useState([]);
+    // ====== NOVO ESTADO: PRODUTOS ORIGINAIS ======
+    const [produtosOriginais, setProdutosOriginais] = useState([]);
     const [categorias, setCategorias] = useState([]);
     const [loading, setLoading] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
     const [modoEdicao, setModoEdicao] = useState(false);
     const [produtoSelecionado, setProdutoSelecionado] = useState(null);
     const [imagePreview, setImagePreview] = useState('');
+    // ====== NOVO ESTADO: ALTERAÇÕES PENDENTES ======
+    const [alteracoesPendentes, setAlteracoesPendentes] = useState(new Map());
 
     const [formData, setFormData] = useState({
         nome: '',
@@ -44,6 +48,8 @@ export default function GerenciarProdutos() {
                 categoriasApi.listarAtivas(),
             ]);
             setProdutos(produtosRes.data);
+            // ====== SALVAR CÓPIA DOS PRODUTOS ORIGINAIS ======
+            setProdutosOriginais(JSON.parse(JSON.stringify(produtosRes.data)));
             setCategorias(categoriasRes.data);
             toast.success('Produtos carregados!', { id: loadingToast });
         } catch (error) {
@@ -137,7 +143,6 @@ export default function GerenciarProdutos() {
         }
     };
 
-    // ====== NOVA FUNÇÃO: ALTERAR CATEGORIA ======
     const alterarCategoria = async (produtoId, novaCategoriaId) => {
         const produto = produtos.find((p) => p.id === produtoId);
         if (!produto) return;
@@ -159,6 +164,28 @@ export default function GerenciarProdutos() {
             toast.error('Erro ao atualizar categoria!', { id: loadingToast });
         }
     };
+
+    // ====== NOVA FUNÇÃO: ALTERAR STATUS (LOCAL) ======
+    const alterarStatus = (produtoId, novoStatus) => {
+        const novosProdutos = produtos.map((p) =>
+            p.id === produtoId ? { ...p, status: novoStatus } : p
+        );
+        setProdutos(novosProdutos);
+
+        const produtoOriginal = produtosOriginais.find((p) => p.id === produtoId);
+        const novasAlteracoes = new Map(alteracoesPendentes);
+
+        if (produtoOriginal.status !== novoStatus) {
+            novasAlteracoes.set(produtoId, novoStatus);
+        } else {
+            novasAlteracoes.delete(produtoId);
+        }
+
+        setAlteracoesPendentes(novasAlteracoes);
+    };
+
+    // ====== NOVA FUNÇÃO: VERIFICAR SE PRODUTO FOI MODIFICADO ======
+    const produtoFoiModificado = (id) => alteracoesPendentes.has(id);
 
     return (
         <div className="min-h-screen bg-gray-50 pb-24">
@@ -220,7 +247,12 @@ export default function GerenciarProdutos() {
                                 {produtos.map((produto) => (
                                     <tr
                                         key={produto.id}
-                                        className="bg-white border border-gray-300"
+                                        // ====== HIGHLIGHT SE FOI MODIFICADO ======
+                                        className={`bg-white rounded-lg transition-colors ${
+                                            produtoFoiModificado(produto.id)
+                                                ? 'bg-yellow-50 border-2 border-orange-400'
+                                                : 'border border-gray-300'
+                                        }`}
                                     >
                                         <td className="px-3 py-4 text-sm text-gray-800 rounded-l-lg">
                                             {produto.nome}
@@ -231,7 +263,6 @@ export default function GerenciarProdutos() {
                                         <td className="px-3 py-4 text-center">
                                             <Download className="w-5 h-5 mx-auto text-gray-600 cursor-pointer hover:text-helou-green" />
                                         </td>
-                                        {/* ====== SELECT DE CATEGORIA NA TABELA ====== */}
                                         <td className="px-3 py-4">
                                             <select
                                                 value={produto.categoria?.id || ''}
@@ -246,8 +277,24 @@ export default function GerenciarProdutos() {
                                                 ))}
                                             </select>
                                         </td>
-                                        <td className="px-3 py-4 text-sm text-gray-800">
-                                            {produto.status}
+                                        {/* ====== SELECT DE STATUS ====== */}
+                                        <td className="px-3 py-4">
+                                            <select
+                                                value={produto.status}
+                                                onChange={(e) => alterarStatus(produto.id, e.target.value)}
+                                                className={`px-3 py-1.5 rounded border text-sm font-medium cursor-pointer appearance-none bg-white pr-8 bg-no-repeat bg-right ${
+                                                    produto.status === 'Ativo'
+                                                        ? 'text-green-700 border-green-700'
+                                                        : 'text-red-700 border-red-700'
+                                                }`}
+                                                style={{
+                                                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
+                                                    backgroundPosition: 'right 8px center',
+                                                }}
+                                            >
+                                                <option value="Ativo">Ativo</option>
+                                                <option value="Inativo">Inativo</option>
+                                            </select>
                                         </td>
                                         <td className="px-3 py-4 text-center rounded-r-lg">
                                             <button
