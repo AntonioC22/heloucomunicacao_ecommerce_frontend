@@ -16,13 +16,13 @@ import { flushSync } from 'react-dom';
 
 export default function GerenciarProdutos() {
     const [produtos, setProdutos] = useState([]);
-    const [produtosOriginais, setProdutosOriginais] = useState([]);
+    // const [produtosOriginais, setProdutosOriginais] = useState([]); // REMOVIDO: Comentário original mantido
     const [categorias, setCategorias] = useState([]);
     const [loading, setLoading] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
     const [modoEdicao, setModoEdicao] = useState(false);
     const [produtoSelecionado, setProdutoSelecionado] = useState(null);
-    const [alteracoesPendentes, setAlteracoesPendentes] = useState(new Map());
+    // const [alteracoesPendentes, setAlteracoesPendentes] = useState(new Map()); // REMOVIDO: Comentário original mantido
     // const [imagePreview, setImagePreview] = useState('');
 
 
@@ -37,7 +37,7 @@ export default function GerenciarProdutos() {
         preco: '',
         linkDownload: '',
         imagemUrl: '',
-        googleDriveFileId: '',
+        linkProduto: '',
         categoriaId: '',
     });
 
@@ -51,16 +51,16 @@ export default function GerenciarProdutos() {
         setLoading(true);
         try {
             const [produtosRes, categoriasRes] = await Promise.all([
-                produtosApi.listar(),
+                produtosApi.listarProdutos(),
                 categoriasApi.listarAtivas(),
             ]);
             setProdutos(produtosRes.data);
-            setProdutosOriginais(JSON.parse(JSON.stringify(produtosRes.data)));
+            // setProdutosOriginais(JSON.parse(JSON.stringify(produtosRes.data))); // REMOVIDO: Referência a setProdutosOriginais
             setCategorias(categoriasRes.data);
-            toast.success('Produtos carregados!');
+            // toast.success('Produtos carregados!');
         } catch (error) {
             console.error('Erro ao carregar dados:', error);
-            toast.error('Erro ao carregar dados!');
+            // toast.error('Erro ao carregar dados!');
         } finally {
             setLoading(false);
         }
@@ -76,7 +76,7 @@ export default function GerenciarProdutos() {
             preco: '',
             linkDownload: '',
             imagemUrl: '',
-            googleDriveFileId: '',
+            linkProduto: '',
             categoriaId: '',
         });
         // setImagePreview('');
@@ -96,7 +96,7 @@ export default function GerenciarProdutos() {
                 preco: produto.preco,
                 linkDownload: produto.linkDownload || '',
                 imagemUrl: produto.imagemUrl || '',
-                googleDriveFileId: produto.googleDriveFileId || '',
+                linkProduto: produto.linkProduto || '',
                 categoriaId: produto.categoria?.id?.toString() || '',
             });
             // setImagePreview(produto.imagemUrl || '');
@@ -118,7 +118,7 @@ export default function GerenciarProdutos() {
             preco: parseFloat(formData.preco),
             linkDownload: formData.linkDownload,
             imagemUrl: formData.imagemUrl || null,
-            googleDriveFileId: formData.googleDriveFileId || null,
+            linkProduto: formData.linkProduto || null,
             categoria: {
                 id: parseInt(formData.categoriaId),
             },
@@ -174,35 +174,42 @@ export default function GerenciarProdutos() {
     };
 
 
-    const alterarStatus = (produtoId, novoStatus) => {
-        const novosProdutos = produtos.map((p) =>
-            p.id === produtoId ? { ...p, status: novoStatus } : p
-        );
-        setProdutos(novosProdutos);
+    const alterarStatus = async (produtoId, novoStatus) => {
+        const produto = produtos.find((p) => p.id === produtoId);
+        if (!produto) return;
 
+        const loadingToast = toast.loading('Atualizando status...');
 
-        const produtoOriginal = produtosOriginais.find((p) => p.id === produtoId);
-        const novasAlteracoes = new Map(alteracoesPendentes);
+        try {
+            //Chamar o endpoint específico no Backend
+            await produtosApi.atualizarStatus(produtoId, novoStatus);
 
+            //Notificar e recarregar os dados
+            //Adicionando duration: 3000
+            toast.success('Status atualizado com sucesso!', {
+                id: loadingToast,
+                duration: 3000 //O toast de sumirá após 3 segundos
+            });
 
-        if (produtoOriginal.status !== novoStatus) {
-            novasAlteracoes.set(produtoId, novoStatus);
-        } else {
-            novasAlteracoes.delete(produtoId);
+            //Recarrega todos os dados para refletir a mudança
+            carregarDados();
+        } catch (error) {
+            console.error('Erro ao atualizar status:', error);
+            //O toast de erro também será atualizado e sumirá após 3 segundos
+            toast.error('Erro ao atualizar status!', {
+                id: loadingToast,
+                duration: 3000
+            });
         }
-
-
-        setAlteracoesPendentes(novasAlteracoes);
     };
 
-
-    // const salvarAlteracoes = async () => {
-    //     if (alteracoesPendentes.size === 0) return;
+    // const salvarAlteracoes = async () => { // REMOVIDO: Comentário original mantido
+    //     if (alteracoesPendentes.size === 0) return; // REMOVIDO: Referência a alteracoesPendentes
     //
     //     const loadingToast = toast.loading('Salvando alterações...');
     //
     //     try {
-    //         const promises = Array.from(alteracoesPendentes.entries()).map(([id, status]) =>
+    //         const promises = Array.from(alteracoesPendentes.entries()).map(([id, status]) => // REMOVIDO: Referência a alteracoesPendentes
     //             produtosApi.atualizarStatus(id, status)
     //         );
     //
@@ -217,12 +224,11 @@ export default function GerenciarProdutos() {
     // };
 
 
-    // const cancelarAlteracoes = () => {
-    //     setProdutos(JSON.parse(JSON.stringify(produtosOriginais)));
-    //     setAlteracoesPendentes(new Map());
+    // const cancelarAlteracoes = () => { // REMOVIDO: Comentário original mantido
+    //     setProdutos(JSON.parse(JSON.stringify(produtosOriginais))); // REMOVIDO: Referência a produtosOriginais
+    //     setAlteracoesPendentes(new Map()); // REMOVIDO: Referência a setAlteracoesPendentes
     //     toast.success('Alterações canceladas!');
     // };
-
 
     const handleCancelarModal = () => {
         toast((t) => (
@@ -251,7 +257,7 @@ export default function GerenciarProdutos() {
 
                             toast.success('Cancelado!');
                         }}
-                        className="px-4 py-2 bg-red-500 text-white rounded-md text-sm font-medium hover:bg-red-600"
+                        className="px-4 py-2 bg-red-900 text-white rounded-md text-sm font-medium hover:bg-red-900"
                     >
                         Sim, cancelar
                     </button>
@@ -267,9 +273,6 @@ export default function GerenciarProdutos() {
         });
     };
 
-
-
-
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
@@ -281,7 +284,7 @@ export default function GerenciarProdutos() {
     };
 
 
-    const produtoFoiModificado = (id) => alteracoesPendentes.has(id);
+    // const produtoFoiModificado = (id) => alteracoesPendentes.has(id); // REMOVIDO: Referência a alteracoesPendentes
 
 
     // Paginação
@@ -345,7 +348,7 @@ export default function GerenciarProdutos() {
                                             Preço
                                         </th>
                                         <th className="text-center px-3 py-3 text-sm font-semibold text-gray-700">
-                                            Link
+                                            Link do Produto
                                         </th>
                                         <th className="text-left px-3 py-3 text-sm font-semibold text-gray-700">
                                             Categoria
@@ -363,9 +366,8 @@ export default function GerenciarProdutos() {
                                         <tr
                                             key={produto.id}
                                             className={`bg-white rounded-lg transition-colors ${
-                                                produtoFoiModificado(produto.id)
-                                                    ? 'bg-yellow-50 border-2 border-orange-400'
-                                                    : 'border border-gray-300'
+                                                // produtoFoiModificado(produto.id) ? 'bg-yellow-50 border-2 border-orange-400' : 
+                                                'border border-gray-300'
                                             }`}
                                         >
                                             <td className="px-3 py-4 text-sm text-gray-800 rounded-l-lg">
@@ -397,7 +399,7 @@ export default function GerenciarProdutos() {
                                                     className={`px-3 py-1.5 rounded border text-sm font-medium cursor-pointer appearance-none bg-white pr-8 bg-no-repeat bg-right ${
                                                         produto.status === 'Ativo'
                                                             ? 'text-green-700 border-green-700'
-                                                            : 'text-red-700 border-red-700'
+                                                            : 'text-red-900 border-red-900'
                                                     }`}
                                                     style={{
                                                         backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
@@ -482,25 +484,25 @@ export default function GerenciarProdutos() {
 
             {/* Botões Fixos */}
             {/*<div className="fixed bottom-5 right-10 flex gap-4 z-50">*/}
-            {/*    /!*<button*!/*/}
-            {/*    /!*    onClick={salvarAlteracoes}*!/*/}
-            {/*    /!*    disabled={alteracoesPendentes.size === 0}*!/*/}
-            {/*    /!*    className={`px-8 py-3.5 rounded-md font-semibold text-base transition-all shadow-lg ${*!/*/}
-            {/*    /!*        alteracoesPendentes.size > 0*!/*/}
-            {/*    /!*            ? 'bg-green-500 text-white cursor-pointer hover:bg-green-600 hover:-translate-y-0.5'*!/*/}
-            {/*    /!*            : 'bg-gray-400 text-white cursor-not-allowed'*!/*/}
-            {/*    /!*    }`}*!/*/}
-            {/*    /!*>*!/*/}
-            {/*    /!*    Salvar*!/*/}
-            {/*    /!*</button>*!/*/}
-            {/*    {alteracoesPendentes.size > 0 && (*/}
-            {/*        <button*/}
-            {/*            onClick={cancelarAlteracoes}*/}
-            {/*            className="bg-red-500 text-white px-8 py-3.5 rounded-md font-semibold hover:bg-red-600 hover:-translate-y-0.5 transition-all shadow-lg"*/}
-            {/*        >*/}
-            {/*            Cancelar*/}
-            {/*        </button>*/}
-            {/*    )}*/}
+            {/* /!*<button*!/*/}
+            {/* /!* onClick={salvarAlteracoes}*!/*/}
+            {/* /!* disabled={alteracoesPendentes.size === 0}*!/*/}
+            {/* /!* className={`px-8 py-3.5 rounded-md font-semibold text-base transition-all shadow-lg ${*!/*/}
+            {/* /!* alteracoesPendentes.size > 0*!/*/}
+            {/* /!* ? 'bg-green-500 text-white cursor-pointer hover:bg-green-600 hover:-translate-y-0.5'*!/*/}
+            {/* /!* : 'bg-gray-400 text-white cursor-not-allowed'*!/*/}
+            {/* /!* }`}*!/*/}
+            {/* /!*>*!/*/}
+            {/* /!* Salvar*!/*/}
+            {/* /!*</button>*!/*/}
+            {/* {/!*alteracoesPendentes.size > 0 && (*!/*/}
+            {/* <button*/}
+            {/* // onClick={cancelarAlteracoes}*/}
+            {/* className="bg-red-500 text-white px-8 py-3.5 rounded-md font-semibold hover:bg-red-600 hover:-translate-y-0.5 transition-all shadow-lg"*/}
+            {/* >*/}
+            {/* Cancelar*/}
+            {/* </button>*/}
+            {/* /!*)}*!/*/}
             {/*</div>*/}
 
 
@@ -522,16 +524,16 @@ export default function GerenciarProdutos() {
                     </div>
 
 
-                    <div className="bg-white rounded-lg p-8 w-full max-w-2xl">
+                    <div className="bg-white rounded-lg p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-2xl font-bold text-helou-green">
                                 {modoEdicao ? 'Editar Produto' : 'Adicionar Novo Produto'}
                             </h2>
                             {/*<button*/}
-                            {/*    onClick={handleCancelarModal}*/}
-                            {/*    className="text-gray-400 hover:text-gray-600 text-3xl"*/}
+                            {/* onClick={handleCancelarModal}*/}
+                            {/* className="text-gray-400 hover:text-gray-600 text-3xl"*/}
                             {/*>*/}
-                            {/*    ×*/}
+                            {/* ×*/}
                             {/*</button>*/}
                         </div>
 
@@ -609,24 +611,24 @@ export default function GerenciarProdutos() {
                                     onChange={handleInputChange}
                                 />
                                 {/*{imagePreview && (*/}
-                                {/*    <div className="mt-2 text-center">*/}
-                                {/*        <img*/}
-                                {/*            src={imagePreview}*/}
-                                {/*            alt="Preview"*/}
-                                {/*            className="max-w-full max-h-48 rounded border border-gray-300 mx-auto"*/}
-                                {/*            onError={() => toast.error('Erro ao carregar imagem!')}*/}
-                                {/*        />*/}
-                                {/*    </div>*/}
+                                {/* <div className="mt-2 text-center">*/}
+                                {/* <img*/}
+                                {/* src={imagePreview}*/}
+                                {/* alt="Preview"*/}
+                                {/* className="max-w-full max-h-48 rounded border border-gray-300 mx-auto"*/}
+                                {/* onError={() => toast.error('Erro ao carregar imagem!')}*/}
+                                {/* />*/}
+                                {/* </div>*/}
                                 {/*)}*/}
                             </div>
 
 
                             <div>
-                                <Label htmlFor="googleDriveFileId">Google Drive File ID *</Label>
+                                <Label htmlFor="Link do Produto">Link do Produto *</Label>
                                 <Input
-                                    id="googleDriveFileId"
-                                    name="googleDriveFileId"
-                                    value={formData.googleDriveFileId}
+                                    id="linkProduto"
+                                    name="linkProduto"
+                                    value={formData.linkProduto}
                                     onChange={handleInputChange}
                                     required
                                 />
@@ -649,15 +651,15 @@ export default function GerenciarProdutos() {
                                 <button
                                     type="button"
                                     onClick={handleCancelarModal}
-                                    className="bg-gray-200 text-gray-800 px-5 py-2.5 rounded-md font-medium hover:bg-gray-300"
+                                    className="bg-red-900 text-white px-5 py-2.5 rounded-md font-medium hover:bg-gray-300"
                                 >
-                                    Cancelar
+                                    Descartar Alterações
                                 </button>
                                 <button
                                     type="submit"
                                     className="bg-helou-green text-white px-5 py-2.5 rounded-md font-medium hover:opacity-90"
                                 >
-                                    {modoEdicao ? 'Atualizar' : 'Salvar'}
+                                    {modoEdicao ? 'Atualizar' : 'Salvar Alterações'}
                                 </button>
                             </div>
                         </form>
