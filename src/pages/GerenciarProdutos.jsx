@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Download } from 'lucide-react';
+import { Plus, Download, SquarePen } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import {
@@ -11,6 +11,8 @@ import {
 } from '../components/ui/select';
 import { produtosApi, categoriasApi } from '../services/api';
 import toast, { Toaster } from 'react-hot-toast';
+import { flushSync } from 'react-dom';
+
 
 export default function GerenciarProdutos() {
     const [produtos, setProdutos] = useState([]);
@@ -20,11 +22,14 @@ export default function GerenciarProdutos() {
     const [modalOpen, setModalOpen] = useState(false);
     const [modoEdicao, setModoEdicao] = useState(false);
     const [produtoSelecionado, setProdutoSelecionado] = useState(null);
-    const [imagePreview, setImagePreview] = useState('');
     const [alteracoesPendentes, setAlteracoesPendentes] = useState(new Map());
+    // const [imagePreview, setImagePreview] = useState('');
 
+
+    // Estados de paginação
     const [paginaAtual, setPaginaAtual] = useState(1);
     const itensPorPagina = 10;
+
 
     const [formData, setFormData] = useState({
         nome: '',
@@ -36,13 +41,14 @@ export default function GerenciarProdutos() {
         categoriaId: '',
     });
 
+
     useEffect(() => {
         carregarDados();
     }, []);
 
+
     const carregarDados = async () => {
         setLoading(true);
-        const loadingToast = toast.loading('Carregando produtos...');
         try {
             const [produtosRes, categoriasRes] = await Promise.all([
                 produtosApi.listar(),
@@ -51,14 +57,15 @@ export default function GerenciarProdutos() {
             setProdutos(produtosRes.data);
             setProdutosOriginais(JSON.parse(JSON.stringify(produtosRes.data)));
             setCategorias(categoriasRes.data);
-            toast.success('Produtos carregados!', { id: loadingToast });
+            toast.success('Produtos carregados!');
         } catch (error) {
             console.error('Erro ao carregar dados:', error);
-            toast.error('Erro ao carregar dados!', { id: loadingToast });
+            toast.error('Erro ao carregar dados!');
         } finally {
             setLoading(false);
         }
     };
+
 
     const abrirModalAdicionar = () => {
         setModoEdicao(false);
@@ -72,9 +79,10 @@ export default function GerenciarProdutos() {
             googleDriveFileId: '',
             categoriaId: '',
         });
-        setImagePreview('');
+        // setImagePreview('');
         setModalOpen(true);
     };
+
 
     const abrirModalEditar = async (id) => {
         try {
@@ -91,7 +99,7 @@ export default function GerenciarProdutos() {
                 googleDriveFileId: produto.googleDriveFileId || '',
                 categoriaId: produto.categoria?.id?.toString() || '',
             });
-            setImagePreview(produto.imagemUrl || '');
+            // setImagePreview(produto.imagemUrl || '');
             setModalOpen(true);
         } catch (error) {
             console.error('Erro ao buscar produto:', error);
@@ -99,17 +107,10 @@ export default function GerenciarProdutos() {
         }
     };
 
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value }));
-
-        if (name === 'imagemUrl') {
-            setImagePreview(value);
-        }
-    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
 
         const produtoData = {
             nome: formData.nome,
@@ -123,9 +124,11 @@ export default function GerenciarProdutos() {
             },
         };
 
+
         const loadingToast = toast.loading(
             modoEdicao ? 'Atualizando produto...' : 'Criando produto...'
         );
+
 
         try {
             if (modoEdicao && produtoSelecionado) {
@@ -143,11 +146,14 @@ export default function GerenciarProdutos() {
         }
     };
 
+
     const alterarCategoria = async (produtoId, novaCategoriaId) => {
         const produto = produtos.find((p) => p.id === produtoId);
         if (!produto) return;
 
+
         const loadingToast = toast.loading('Atualizando categoria...');
+
 
         try {
             const produtoAtualizado = {
@@ -156,6 +162,8 @@ export default function GerenciarProdutos() {
                     id: parseInt(novaCategoriaId),
                 },
             };
+
+
             await produtosApi.atualizar(produtoId, produtoAtualizado);
             toast.success('Categoria atualizada com sucesso!', { id: loadingToast });
             carregarDados();
@@ -165,14 +173,17 @@ export default function GerenciarProdutos() {
         }
     };
 
+
     const alterarStatus = (produtoId, novoStatus) => {
         const novosProdutos = produtos.map((p) =>
             p.id === produtoId ? { ...p, status: novoStatus } : p
         );
         setProdutos(novosProdutos);
 
+
         const produtoOriginal = produtosOriginais.find((p) => p.id === produtoId);
         const novasAlteracoes = new Map(alteracoesPendentes);
+
 
         if (produtoOriginal.status !== novoStatus) {
             novasAlteracoes.set(produtoId, novoStatus);
@@ -180,37 +191,98 @@ export default function GerenciarProdutos() {
             novasAlteracoes.delete(produtoId);
         }
 
+
         setAlteracoesPendentes(novasAlteracoes);
     };
 
-    // ====== NOVA FUNÇÃO: SALVAR ALTERAÇÕES ======
-    const salvarAlteracoes = async () => {
-        if (alteracoesPendentes.size === 0) return;
 
-        const loadingToast = toast.loading('Salvando alterações...');
+    // const salvarAlteracoes = async () => {
+    //     if (alteracoesPendentes.size === 0) return;
+    //
+    //     const loadingToast = toast.loading('Salvando alterações...');
+    //
+    //     try {
+    //         const promises = Array.from(alteracoesPendentes.entries()).map(([id, status]) =>
+    //             produtosApi.atualizarStatus(id, status)
+    //         );
+    //
+    //         await Promise.all(promises);
+    //         toast.success('Alterações salvas com sucesso!', { id: loadingToast });
+    //         setAlteracoesPendentes(new Map());
+    //         carregarDados();
+    //     } catch (error) {
+    //         console.error('Erro ao salvar alterações:', error);
+    //         toast.error('Erro ao salvar alterações!', { id: loadingToast });
+    //     }
+    // };
 
-        try {
-            const promises = Array.from(alteracoesPendentes.entries()).map(([id, status]) =>
-                produtosApi.atualizarStatus(id, status)
-            );
-            await Promise.all(promises);
-            toast.success('Alterações salvas com sucesso!', { id: loadingToast });
-            setAlteracoesPendentes(new Map());
-            carregarDados();
-        } catch (error) {
-            console.error('Erro ao salvar alterações:', error);
-            toast.error('Erro ao salvar alterações!', { id: loadingToast });
-        }
+
+    // const cancelarAlteracoes = () => {
+    //     setProdutos(JSON.parse(JSON.stringify(produtosOriginais)));
+    //     setAlteracoesPendentes(new Map());
+    //     toast.success('Alterações canceladas!');
+    // };
+
+
+    const handleCancelarModal = () => {
+        toast((t) => (
+            <div className="flex flex-col gap-3">
+                <p className="font-medium">Deseja cancelar?</p>
+                <p className="text-sm text-gray-600">As alterações não serão salvas.</p>
+                <div className="flex gap-2 justify-end">
+                    <button
+                        onClick={() => {
+                            toast.dismiss(t.id);
+                        }}
+                        className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md text-sm font-medium hover:bg-gray-300"
+                    >
+                        Não
+                    </button>
+                    <button
+                        onClick={() => {
+                            toast.dismiss(t.id);
+
+
+                            // FECHA O MODAL ANTES DO TOAST SER EXIBIDO
+                            flushSync(() => {
+                                setModalOpen(false);
+                            });
+
+
+                            toast.success('Cancelado!');
+                        }}
+                        className="px-4 py-2 bg-red-500 text-white rounded-md text-sm font-medium hover:bg-red-600"
+                    >
+                        Sim, cancelar
+                    </button>
+                </div>
+            </div>
+        ), {
+            duration: Infinity,
+            position: 'top-center',
+            style: {
+                marginTop: '50vh',
+                transform: 'translateY(-50%)',
+            },
+        });
     };
 
-    // ====== NOVA FUNÇÃO: CANCELAR ALTERAÇÕES ======
-    const cancelarAlteracoes = () => {
-        setProdutos(JSON.parse(JSON.stringify(produtosOriginais)));
-        setAlteracoesPendentes(new Map());
-        toast.success('Alterações canceladas!');
+
+
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData((prev) => ({ ...prev, [name]: value }));
+
+
+        // if (name === 'imagemUrl') {
+        //     setImagePreview(value);
+        // }
     };
+
 
     const produtoFoiModificado = (id) => alteracoesPendentes.has(id);
+
 
     // Paginação
     const totalPaginas = Math.ceil(produtos.length / itensPorPagina);
@@ -224,6 +296,7 @@ export default function GerenciarProdutos() {
             setPaginaAtual(novaPagina);
         }
     };
+
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -349,6 +422,7 @@ export default function GerenciarProdutos() {
                                 </table>
                             </div>
 
+
                             {/* Paginação */}
                             {totalPaginas > 1 && (
                                 <div className="flex justify-center items-center gap-2 mt-6">
@@ -429,28 +503,40 @@ export default function GerenciarProdutos() {
             {/*    )}*/}
             {/*</div>*/}
 
+
+            {/* Modal */}
             {modalOpen && (
-                <div
-                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-                    onClick={() => setModalOpen(false)}
-                >
-                    <div
-                        className="bg-white rounded-lg p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
-                        onClick={(e) => e.stopPropagation()}
-                    >
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+
+
+                    {/* TOASTER ESPECÍFICO DO MODAL */}
+                    <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                        <Toaster
+                            containerStyle={{
+                                position: 'absolute',
+                                inset: 0,
+                            }}
+                            position="top-center"
+                            reverseOrder={false}
+                        />
+                    </div>
+
+
+                    <div className="bg-white rounded-lg p-8 w-full max-w-2xl">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-2xl font-bold text-helou-green">
                                 {modoEdicao ? 'Editar Produto' : 'Adicionar Novo Produto'}
                             </h2>
-                            <button
-                                onClick={() => setModalOpen(false)}
-                                className="text-gray-400 hover:text-gray-600 text-3xl"
-                            >
-                                ×
-                            </button>
+                            {/*<button*/}
+                            {/*    onClick={handleCancelarModal}*/}
+                            {/*    className="text-gray-400 hover:text-gray-600 text-3xl"*/}
+                            {/*>*/}
+                            {/*    ×*/}
+                            {/*</button>*/}
                         </div>
 
-                        <form onSubmit={handleSubmit} className="space-y-5">
+
+                        <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
                                 <Label htmlFor="nome">Nome do Produto *</Label>
                                 <Input
@@ -461,6 +547,7 @@ export default function GerenciarProdutos() {
                                     required
                                 />
                             </div>
+
 
                             <div>
                                 <Label htmlFor="categoriaId">Categoria *</Label>
@@ -484,6 +571,7 @@ export default function GerenciarProdutos() {
                                 </Select>
                             </div>
 
+
                             <div>
                                 <Label htmlFor="descricao">Descrição</Label>
                                 <textarea
@@ -491,10 +579,11 @@ export default function GerenciarProdutos() {
                                     name="descricao"
                                     value={formData.descricao}
                                     onChange={handleInputChange}
-                                    rows="3"
+                                    rows="2"
                                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm resize-y"
                                 />
                             </div>
+
 
                             <div>
                                 <Label htmlFor="preco">Preço (R$) *</Label>
@@ -509,6 +598,7 @@ export default function GerenciarProdutos() {
                                 />
                             </div>
 
+
                             <div>
                                 <Label htmlFor="imagemUrl">URL da Imagem</Label>
                                 <Input
@@ -518,17 +608,18 @@ export default function GerenciarProdutos() {
                                     value={formData.imagemUrl}
                                     onChange={handleInputChange}
                                 />
-                                {imagePreview && (
-                                    <div className="mt-3 text-center">
-                                        <img
-                                            src={imagePreview}
-                                            alt="Preview"
-                                            className="max-w-full max-h-48 rounded border border-gray-300 mx-auto"
-                                            onError={() => toast.error('Erro ao carregar imagem!')}
-                                        />
-                                    </div>
-                                )}
+                                {/*{imagePreview && (*/}
+                                {/*    <div className="mt-2 text-center">*/}
+                                {/*        <img*/}
+                                {/*            src={imagePreview}*/}
+                                {/*            alt="Preview"*/}
+                                {/*            className="max-w-full max-h-48 rounded border border-gray-300 mx-auto"*/}
+                                {/*            onError={() => toast.error('Erro ao carregar imagem!')}*/}
+                                {/*        />*/}
+                                {/*    </div>*/}
+                                {/*)}*/}
                             </div>
+
 
                             <div>
                                 <Label htmlFor="googleDriveFileId">Google Drive File ID *</Label>
@@ -541,6 +632,7 @@ export default function GerenciarProdutos() {
                                 />
                             </div>
 
+
                             <div>
                                 <Label htmlFor="linkDownload">Link de Download</Label>
                                 <Input
@@ -552,10 +644,11 @@ export default function GerenciarProdutos() {
                                 />
                             </div>
 
-                            <div className="flex gap-3 justify-end pt-4">
+
+                            <div className="flex gap-3 justify-end pt-3">
                                 <button
                                     type="button"
-                                    onClick={() => setModalOpen(false)}
+                                    onClick={handleCancelarModal}
                                     className="bg-gray-200 text-gray-800 px-5 py-2.5 rounded-md font-medium hover:bg-gray-300"
                                 >
                                     Cancelar
