@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Download, SquarePen } from 'lucide-react';
+import { Plus, Download, Link, SquarePen } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import {
@@ -377,7 +377,7 @@ export default function GerenciarProdutos() {
                                                 R$ {parseFloat(produto.preco).toFixed(2).replace('.', ',')}
                                             </td>
                                             <td className="px-3 py-4 text-center">
-                                                <Download className="w-5 h-5 mx-auto text-gray-600 cursor-pointer hover:text-helou-green" />
+                                                <Link className="w-5 h-5 mx-auto text-gray-600 cursor-pointer hover:text-helou-green" />
                                             </td>
                                             <td className="px-3 py-4">
                                                 <select
