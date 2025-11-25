@@ -23,6 +23,9 @@ export default function GerenciarProdutos() {
     const [imagePreview, setImagePreview] = useState('');
     const [alteracoesPendentes, setAlteracoesPendentes] = useState(new Map());
 
+    const [paginaAtual, setPaginaAtual] = useState(1);
+    const itensPorPagina = 10;
+
     const [formData, setFormData] = useState({
         nome: '',
         descricao: '',
@@ -209,13 +212,25 @@ export default function GerenciarProdutos() {
 
     const produtoFoiModificado = (id) => alteracoesPendentes.has(id);
 
+    // Paginação
+    const totalPaginas = Math.ceil(produtos.length / itensPorPagina);
+    const indiceInicio = (paginaAtual - 1) * itensPorPagina;
+    const indiceFim = indiceInicio + itensPorPagina;
+    const produtosPaginados = produtos.slice(indiceInicio, indiceFim);
+
+
+    const mudarPagina = (novaPagina) => {
+        if (novaPagina >= 1 && novaPagina <= totalPaginas) {
+            setPaginaAtual(novaPagina);
+        }
+    };
+
     return (
-        <div className="min-h-screen bg-gray-50 pb-24">
+        <div className="min-h-screen bg-gray-50">
             <Toaster />
             <main className="container mx-auto px-10 py-10 max-w-7xl">
-                <h1 className="text-3xl font-bold text-helou-green mb-8">
-                    Gerenciar Produtos
-                </h1>
+                <h1 className="text-3xl font-bold text-helou-green mb-8">Gerenciar Produtos</h1>
+
 
                 <button
                     onClick={abrirModalAdicionar}
@@ -224,137 +239,195 @@ export default function GerenciarProdutos() {
                     + Adicionar novo produto
                 </button>
 
+
                 <div className="bg-gray-300 rounded-lg p-8">
-                    <h2 className="text-base font-semibold text-gray-800 mb-5">
-                        Lista de Produtos Cadastrados ({produtos.length})
-                    </h2>
+                    <div className="flex justify-between items-center mb-5">
+                        <h2 className="text-base font-semibold text-gray-800">
+                            Lista de Produtos Cadastrados ({produtos.length})
+                        </h2>
+                        {totalPaginas > 1 && (
+                            <div className="text-sm text-gray-600">
+                                Página {paginaAtual} de {totalPaginas}
+                            </div>
+                        )}
+                    </div>
+
 
                     {loading ? (
-                        <div className="text-center py-8 text-gray-500">
-                            Carregando produtos...
-                        </div>
+                        <div className="text-center py-8 text-gray-500">Carregando produtos...</div>
                     ) : produtos.length === 0 ? (
                         <div className="text-center py-8 text-gray-500">
                             Nenhum produto cadastrado.
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
-                            <table
-                                className="w-full border-separate"
-                                style={{ borderSpacing: '0 8px' }}
-                            >
-                                <thead>
-                                <tr className="bg-gray-300">
-                                    <th className="text-left px-3 py-3 text-sm font-semibold text-gray-700">
-                                        Nome
-                                    </th>
-                                    <th className="text-left px-3 py-3 text-sm font-semibold text-gray-700">
-                                        Preço
-                                    </th>
-                                    <th className="text-center px-3 py-3 text-sm font-semibold text-gray-700">
-                                        Link
-                                    </th>
-                                    <th className="text-left px-3 py-3 text-sm font-semibold text-gray-700">
-                                        Categoria
-                                    </th>
-                                    <th className="text-left px-3 py-3 text-sm font-semibold text-gray-700">
-                                        Status
-                                    </th>
-                                    <th className="text-center px-3 py-3 text-sm font-semibold text-gray-700">
-                                        Editar
-                                    </th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                {produtos.map((produto) => (
-                                    <tr
-                                        key={produto.id}
-                                        className={`bg-white rounded-lg transition-colors ${
-                                            produtoFoiModificado(produto.id)
-                                                ? 'bg-yellow-50 border-2 border-orange-400'
-                                                : 'border border-gray-300'
-                                        }`}
-                                    >
-                                        <td className="px-3 py-4 text-sm text-gray-800 rounded-l-lg">
-                                            {produto.nome}
-                                        </td>
-                                        <td className="px-3 py-4 text-sm text-gray-800">
-                                            R$ {parseFloat(produto.preco).toFixed(2).replace('.', ',')}
-                                        </td>
-                                        <td className="px-3 py-4 text-center">
-                                            <Download className="w-5 h-5 mx-auto text-gray-600 cursor-pointer hover:text-helou-green" />
-                                        </td>
-                                        <td className="px-3 py-4">
-                                            <select
-                                                value={produto.categoria?.id || ''}
-                                                onChange={(e) => alterarCategoria(produto.id, e.target.value)}
-                                                className="px-3 py-1.5 rounded border text-sm font-medium cursor-pointer bg-white border-gray-400 text-gray-700 min-w-[150px]"
-                                            >
-                                                <option value="">Sem categoria</option>
-                                                {categorias.map((cat) => (
-                                                    <option key={cat.id} value={cat.id}>
-                                                        {cat.nome}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </td>
-                                        <td className="px-3 py-4">
-                                            <select
-                                                value={produto.status}
-                                                onChange={(e) => alterarStatus(produto.id, e.target.value)}
-                                                className={`px-3 py-1.5 rounded border text-sm font-medium cursor-pointer appearance-none bg-white pr-8 bg-no-repeat bg-right ${
-                                                    produto.status === 'Ativo'
-                                                        ? 'text-green-700 border-green-700'
-                                                        : 'text-red-700 border-red-700'
-                                                }`}
-                                                style={{
-                                                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
-                                                    backgroundPosition: 'right 8px center',
-                                                }}
-                                            >
-                                                <option value="Ativo">Ativo</option>
-                                                <option value="Inativo">Inativo</option>
-                                            </select>
-                                        </td>
-                                        <td className="px-3 py-4 text-center rounded-r-lg">
-                                            <button
-                                                onClick={() => abrirModalEditar(produto.id)}
-                                                className="text-lg cursor-pointer hover:scale-110 transition-transform"
-                                            >
-                                                ✏️
-                                            </button>
-                                        </td>
+                        <>
+                            <div className="overflow-x-auto">
+                                <table className="w-full border-separate" style={{ borderSpacing: '0 8px' }}>
+                                    <thead>
+                                    <tr className="bg-gray-300">
+                                        <th className="text-left px-3 py-3 text-sm font-semibold text-gray-700">
+                                            Nome
+                                        </th>
+                                        <th className="text-left px-3 py-3 text-sm font-semibold text-gray-700">
+                                            Preço
+                                        </th>
+                                        <th className="text-center px-3 py-3 text-sm font-semibold text-gray-700">
+                                            Link
+                                        </th>
+                                        <th className="text-left px-3 py-3 text-sm font-semibold text-gray-700">
+                                            Categoria
+                                        </th>
+                                        <th className="text-left px-3 py-3 text-sm font-semibold text-gray-700">
+                                            Status
+                                        </th>
+                                        <th className="text-center px-3 py-3 text-sm font-semibold text-gray-700">
+                                            Editar
+                                        </th>
                                     </tr>
-                                ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                    </thead>
+                                    <tbody>
+                                    {produtosPaginados.map((produto) => (
+                                        <tr
+                                            key={produto.id}
+                                            className={`bg-white rounded-lg transition-colors ${
+                                                produtoFoiModificado(produto.id)
+                                                    ? 'bg-yellow-50 border-2 border-orange-400'
+                                                    : 'border border-gray-300'
+                                            }`}
+                                        >
+                                            <td className="px-3 py-4 text-sm text-gray-800 rounded-l-lg">
+                                                {produto.nome}
+                                            </td>
+                                            <td className="px-3 py-4 text-sm text-gray-800">
+                                                R$ {parseFloat(produto.preco).toFixed(2).replace('.', ',')}
+                                            </td>
+                                            <td className="px-3 py-4 text-center">
+                                                <Download className="w-5 h-5 mx-auto text-gray-600 cursor-pointer hover:text-helou-green" />
+                                            </td>
+                                            <td className="px-3 py-4">
+                                                <select
+                                                    value={produto.categoria?.id || ''}
+                                                    onChange={(e) => alterarCategoria(produto.id, e.target.value)}
+                                                    className="px-3 py-1.5 rounded border text-sm font-medium cursor-pointer bg-white border-gray-400 text-gray-700 min-w-[150px]"
+                                                >
+                                                    {categorias.map((cat) => (
+                                                        <option key={cat.id} value={cat.id}>
+                                                            {cat.nome}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </td>
+                                            <td className="px-3 py-4">
+                                                <select
+                                                    value={produto.status}
+                                                    onChange={(e) => alterarStatus(produto.id, e.target.value)}
+                                                    className={`px-3 py-1.5 rounded border text-sm font-medium cursor-pointer appearance-none bg-white pr-8 bg-no-repeat bg-right ${
+                                                        produto.status === 'Ativo'
+                                                            ? 'text-green-700 border-green-700'
+                                                            : 'text-red-700 border-red-700'
+                                                    }`}
+                                                    style={{
+                                                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
+                                                        backgroundPosition: 'right 8px center',
+                                                    }}
+                                                >
+                                                    <option value="Ativo">Ativo</option>
+                                                    <option value="Inativo">Inativo</option>
+                                                </select>
+                                            </td>
+                                            <td className="px-3 py-4 text-center rounded-r-lg">
+                                                <button
+                                                    onClick={() => abrirModalEditar(produto.id)}
+                                                    className="cursor-pointer hover:scale-110 transition-transform inline-flex items-center justify-center"
+                                                >
+                                                    <SquarePen className="w-5 h-5 text-gray-600" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Paginação */}
+                            {totalPaginas > 1 && (
+                                <div className="flex justify-center items-center gap-2 mt-6">
+                                    <button
+                                        onClick={() => mudarPagina(paginaAtual - 1)}
+                                        disabled={paginaAtual === 1}
+                                        className="px-4 py-2 bg-white border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                                    >
+                                        Anterior
+                                    </button>
+
+
+                                    {[...Array(totalPaginas)].map((_, index) => {
+                                        const numeroPagina = index + 1;
+                                        if (
+                                            numeroPagina === 1 ||
+                                            numeroPagina === totalPaginas ||
+                                            (numeroPagina >= paginaAtual - 1 && numeroPagina <= paginaAtual + 1)
+                                        ) {
+                                            return (
+                                                <button
+                                                    key={numeroPagina}
+                                                    onClick={() => mudarPagina(numeroPagina)}
+                                                    className={`px-4 py-2 rounded-md ${
+                                                        paginaAtual === numeroPagina
+                                                            ? 'bg-helou-green text-white'
+                                                            : 'bg-white border border-gray-300 hover:bg-gray-50'
+                                                    }`}
+                                                >
+                                                    {numeroPagina}
+                                                </button>
+                                            );
+                                        } else if (
+                                            numeroPagina === paginaAtual - 2 ||
+                                            numeroPagina === paginaAtual + 2
+                                        ) {
+                                            return <span key={numeroPagina}>...</span>;
+                                        }
+                                        return null;
+                                    })}
+
+
+                                    <button
+                                        onClick={() => mudarPagina(paginaAtual + 1)}
+                                        disabled={paginaAtual === totalPaginas}
+                                        className="px-4 py-2 bg-white border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                                    >
+                                        Próxima
+                                    </button>
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
             </main>
 
-            {/* ====== BOTÕES FIXOS (NOVOS!) ====== */}
-            <div className="fixed bottom-5 right-10 flex gap-4 z-50">
-                <button
-                    onClick={salvarAlteracoes}
-                    disabled={alteracoesPendentes.size === 0}
-                    className={`px-8 py-3.5 rounded-md font-semibold text-base transition-all shadow-lg ${
-                        alteracoesPendentes.size > 0
-                            ? 'bg-green-500 text-white cursor-pointer hover:bg-green-600 hover:-translate-y-0.5'
-                            : 'bg-gray-400 text-white cursor-not-allowed'
-                    }`}
-                >
-                    Salvar
-                </button>
-                {alteracoesPendentes.size > 0 && (
-                    <button
-                        onClick={cancelarAlteracoes}
-                        className="bg-red-500 text-white px-8 py-3.5 rounded-md font-semibold hover:bg-red-600 hover:-translate-y-0.5 transition-all shadow-lg"
-                    >
-                        Cancelar
-                    </button>
-                )}
-            </div>
+
+            {/* Botões Fixos */}
+            {/*<div className="fixed bottom-5 right-10 flex gap-4 z-50">*/}
+            {/*    /!*<button*!/*/}
+            {/*    /!*    onClick={salvarAlteracoes}*!/*/}
+            {/*    /!*    disabled={alteracoesPendentes.size === 0}*!/*/}
+            {/*    /!*    className={`px-8 py-3.5 rounded-md font-semibold text-base transition-all shadow-lg ${*!/*/}
+            {/*    /!*        alteracoesPendentes.size > 0*!/*/}
+            {/*    /!*            ? 'bg-green-500 text-white cursor-pointer hover:bg-green-600 hover:-translate-y-0.5'*!/*/}
+            {/*    /!*            : 'bg-gray-400 text-white cursor-not-allowed'*!/*/}
+            {/*    /!*    }`}*!/*/}
+            {/*    /!*>*!/*/}
+            {/*    /!*    Salvar*!/*/}
+            {/*    /!*</button>*!/*/}
+            {/*    {alteracoesPendentes.size > 0 && (*/}
+            {/*        <button*/}
+            {/*            onClick={cancelarAlteracoes}*/}
+            {/*            className="bg-red-500 text-white px-8 py-3.5 rounded-md font-semibold hover:bg-red-600 hover:-translate-y-0.5 transition-all shadow-lg"*/}
+            {/*        >*/}
+            {/*            Cancelar*/}
+            {/*        </button>*/}
+            {/*    )}*/}
+            {/*</div>*/}
 
             {modalOpen && (
                 <div
