@@ -14,7 +14,6 @@ import toast, { Toaster } from 'react-hot-toast';
 
 export default function GerenciarProdutos() {
     const [produtos, setProdutos] = useState([]);
-    // ====== NOVO ESTADO: PRODUTOS ORIGINAIS ======
     const [produtosOriginais, setProdutosOriginais] = useState([]);
     const [categorias, setCategorias] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -22,7 +21,6 @@ export default function GerenciarProdutos() {
     const [modoEdicao, setModoEdicao] = useState(false);
     const [produtoSelecionado, setProdutoSelecionado] = useState(null);
     const [imagePreview, setImagePreview] = useState('');
-    // ====== NOVO ESTADO: ALTERAÇÕES PENDENTES ======
     const [alteracoesPendentes, setAlteracoesPendentes] = useState(new Map());
 
     const [formData, setFormData] = useState({
@@ -48,7 +46,6 @@ export default function GerenciarProdutos() {
                 categoriasApi.listarAtivas(),
             ]);
             setProdutos(produtosRes.data);
-            // ====== SALVAR CÓPIA DOS PRODUTOS ORIGINAIS ======
             setProdutosOriginais(JSON.parse(JSON.stringify(produtosRes.data)));
             setCategorias(categoriasRes.data);
             toast.success('Produtos carregados!', { id: loadingToast });
@@ -165,7 +162,6 @@ export default function GerenciarProdutos() {
         }
     };
 
-    // ====== NOVA FUNÇÃO: ALTERAR STATUS (LOCAL) ======
     const alterarStatus = (produtoId, novoStatus) => {
         const novosProdutos = produtos.map((p) =>
             p.id === produtoId ? { ...p, status: novoStatus } : p
@@ -184,7 +180,33 @@ export default function GerenciarProdutos() {
         setAlteracoesPendentes(novasAlteracoes);
     };
 
-    // ====== NOVA FUNÇÃO: VERIFICAR SE PRODUTO FOI MODIFICADO ======
+    // ====== NOVA FUNÇÃO: SALVAR ALTERAÇÕES ======
+    const salvarAlteracoes = async () => {
+        if (alteracoesPendentes.size === 0) return;
+
+        const loadingToast = toast.loading('Salvando alterações...');
+
+        try {
+            const promises = Array.from(alteracoesPendentes.entries()).map(([id, status]) =>
+                produtosApi.atualizarStatus(id, status)
+            );
+            await Promise.all(promises);
+            toast.success('Alterações salvas com sucesso!', { id: loadingToast });
+            setAlteracoesPendentes(new Map());
+            carregarDados();
+        } catch (error) {
+            console.error('Erro ao salvar alterações:', error);
+            toast.error('Erro ao salvar alterações!', { id: loadingToast });
+        }
+    };
+
+    // ====== NOVA FUNÇÃO: CANCELAR ALTERAÇÕES ======
+    const cancelarAlteracoes = () => {
+        setProdutos(JSON.parse(JSON.stringify(produtosOriginais)));
+        setAlteracoesPendentes(new Map());
+        toast.success('Alterações canceladas!');
+    };
+
     const produtoFoiModificado = (id) => alteracoesPendentes.has(id);
 
     return (
@@ -247,7 +269,6 @@ export default function GerenciarProdutos() {
                                 {produtos.map((produto) => (
                                     <tr
                                         key={produto.id}
-                                        // ====== HIGHLIGHT SE FOI MODIFICADO ======
                                         className={`bg-white rounded-lg transition-colors ${
                                             produtoFoiModificado(produto.id)
                                                 ? 'bg-yellow-50 border-2 border-orange-400'
@@ -277,7 +298,6 @@ export default function GerenciarProdutos() {
                                                 ))}
                                             </select>
                                         </td>
-                                        {/* ====== SELECT DE STATUS ====== */}
                                         <td className="px-3 py-4">
                                             <select
                                                 value={produto.status}
@@ -312,6 +332,29 @@ export default function GerenciarProdutos() {
                     )}
                 </div>
             </main>
+
+            {/* ====== BOTÕES FIXOS (NOVOS!) ====== */}
+            <div className="fixed bottom-5 right-10 flex gap-4 z-50">
+                <button
+                    onClick={salvarAlteracoes}
+                    disabled={alteracoesPendentes.size === 0}
+                    className={`px-8 py-3.5 rounded-md font-semibold text-base transition-all shadow-lg ${
+                        alteracoesPendentes.size > 0
+                            ? 'bg-green-500 text-white cursor-pointer hover:bg-green-600 hover:-translate-y-0.5'
+                            : 'bg-gray-400 text-white cursor-not-allowed'
+                    }`}
+                >
+                    Salvar
+                </button>
+                {alteracoesPendentes.size > 0 && (
+                    <button
+                        onClick={cancelarAlteracoes}
+                        className="bg-red-500 text-white px-8 py-3.5 rounded-md font-semibold hover:bg-red-600 hover:-translate-y-0.5 transition-all shadow-lg"
+                    >
+                        Cancelar
+                    </button>
+                )}
+            </div>
 
             {modalOpen && (
                 <div
